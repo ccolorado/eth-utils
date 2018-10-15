@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# trap ctrl-c and call ctrl_c()
+initial_ether_balance=50000
+trap ctrl_c INT
+function ctrl_c() {
+  echo -e "\nKiling all_logger pid  $logger_pid and $transaction_logger_pid"
+  sleep 2
+  kill -9 $logger_pid
+  echo "Kiling ransaction_logger pid  $logger_pid"
+  kill -9 $transaction_logger_pid;
+  echo "Printing remaining ganache process"
+  ps aux | grep ganache
+  exit 0
+}
+
+# Create logs if not exists
+touch .ganache.out .ganache.out.wallets .ganache.out.transactions
+# Clear logs
+cat /dev/null > .ganache.out
+cat /dev/null > .ganache.out.wallets
+cat /dev/null > .ganache.out.transactions
+
+
+tail -f .ganache.out -n 0 &
+logger_pid=$!
+tail -f .ganache.out -n 0 | grep -e "Transaction:\|Error:" > .ganache.out.transactions &
+
+# tail -f .ganache.out -n 0 | grep -e "Transaction:\|Runtime Error:" > .ganache.out.transactions &
+transaction_logger_pid=$!
+
+ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json --port 8546 > .ganache.out 2>&1 &
+ganache_pid=$!
+
+sleep 5
+echo "transaction logger PID = $transaction_logger_pid"
+echo "global logger PID = $logger_pid"
+head -n 35  .ganache.out > .ganache.out.wallets
+wait
+
+ctrl_c
