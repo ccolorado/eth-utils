@@ -3,6 +3,9 @@
 # trap ctrl-c and call ctrl_c()
 initial_ether_balance=50000
 trap ctrl_c INT
+# port="--port 8545"
+port=""
+host=""
 function ctrl_c() {
   echo -e "\nKiling all_logger pid  $logger_pid and $transaction_logger_pid"
   sleep 2
@@ -24,12 +27,12 @@ cat /dev/null > .ganache.out.transactions
 
 tail -f .ganache.out -n 0 &
 logger_pid=$!
-tail -f .ganache.out -n 0 | grep -e "Transaction:\|Error:" > .ganache.out.transactions &
+tail -f .ganache.out -n 0 | grep --line-buffered -ve "^eth_.*\|net_.*\|debug_.*\|net_version\|web3_.*"  > .ganache.out.transactions &
 
 # tail -f .ganache.out -n 0 | grep -e "Transaction:\|Runtime Error:" > .ganache.out.transactions &
 transaction_logger_pid=$!
 
-ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json --port 8546 > .ganache.out 2>&1 &
+ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json $host $port > .ganache.out 2>&1 &
 ganache_pid=$!
 
 sleep 5
