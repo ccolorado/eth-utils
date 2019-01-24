@@ -1,0 +1,50 @@
+#!/bin/bash
+
+LOCK_DIR="/tmp/truffle_compiling"
+LOCK_FILE="contract_hash_"
+CONTRACTS_DIR="./contracts"
+
+if [ ! -d  "$LOCK_DIR" ]; then
+  mkdir -p $LOCK_DIR;
+fi;
+
+truffle compile
+
+inotifywait -e close_write,moved_to,create -m "$CONTRACTS_DIR/" |
+  while read -r directory events filename; do
+
+    if [ ${filename: -4} == ".sol" ]; then
+
+      HASH_FILE="$LOCK_DIR/$LOCK_FILE$(basename $filename)";
+      LAST_COMPILED_HASH="";
+
+      if [ -f $HASH_FILE ]; then
+        LAST_COMPILED_HASH=$(cat $HASH_FILE);
+      fi;
+
+      condensed_file=$(tr -d ' \t\n\r\f' <"$CONTRACTS_DIR/$filename");
+      # echo $condensed_file > "$HASH_FILE$(date +_%M_%S).timed_version";
+
+      NEW_COMPILED_HASH=$(echo $condensed_file | md5sum | cut -d' ' -f1);
+
+      if [ "$LAST_COMPILED_HASH" != "$NEW_COMPILED_HASH" ]; then
+        clear;
+        echo -e "\nCompiling $filename";
+        truffle compile && truffle-flattener "$CONTRACTS_DIR/$filename" > out/Flat.sol
+        # out=$(truffle compile);
+
+        # if [ $? -ne 0 ]; then
+        #   echo $out;
+        # fi;
+
+        echo -e "\nCompiling $filename end";
+
+        echo "LAST HASH: '$LAST_COMPILED_HASH'"
+        echo "NEW  HASH: '$NEW_COMPILED_HASH'"
+        # rm -rfv /tmp/test-11901*
+      fi;
+      echo $NEW_COMPILED_HASH > $HASH_FILE;
+
+    fi;
+    echo -n "."
+  done
