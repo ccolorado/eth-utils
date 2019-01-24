@@ -32,8 +32,16 @@ tail -f .ganache.out -n 0 | grep --line-buffered -ve "^eth_.*\|net_.*\|debug_.*\
 # tail -f .ganache.out -n 0 | grep -e "Transaction:\|Runtime Error:" > .ganache.out.transactions &
 transaction_logger_pid=$!
 
+#TODO: echo the expanded command before executing
+
 ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json $host $port > .ganache.out 2>&1 &
 ganache_pid=$!
+if [ $ganache_pid -ne 0 ]; then
+  echo "ganache died"
+  echo $ganache_pid
+  ctrl_c
+  exit $ganache_pid
+fi;
 
 sleep 5
 echo "transaction logger PID = $transaction_logger_pid"
