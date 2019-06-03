@@ -35,12 +35,12 @@ transaction_logger_pid=$!
 #TODO: echo the expanded command before executing
 
 ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json $host $port > .ganache.out 2>&1 &
-ganache_pid=$!
-if [ $ganache_pid -ne 0 ]; then
-  echo "ganache died"
-  echo $ganache_pid
+ganache_exitstatus=$?
+if [ $ganache_exitstatus -ne 0 ]; then
+  echo "ganache died $ganache_exitstatus"
+  echo $ganache_exitstatus
   ctrl_c
-  exit $ganache_pid
+  exit $ganache_exitstatus
 fi;
 
 sleep 5
