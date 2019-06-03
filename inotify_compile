@@ -3,12 +3,26 @@
 LOCK_DIR="/tmp/truffle_compiling"
 LOCK_FILE="contract_hash_"
 CONTRACTS_DIR="./contracts"
+DE_NOTIFY=0
+# SOUND="/usr/share/sounds/Oxygen-Im-Sms.ogg"
 
 if [ ! -d  "$LOCK_DIR" ]; then
   mkdir -p $LOCK_DIR;
 fi;
 
-truffle compile
+#TODO compile using function
+truffle_compile() {
+  clear;
+  echo -e "\nCompiling $filename";
+  truffle compile && truffle-flattener "$CONTRACTS_DIR/$filename" > "out/FLAT_$filename"
+
+  compile_status=$?
+  if [ $compile_status -ne 0 ] && [ "$DE_NOTIFY" -eq 0 ]; then
+    kdialog --title "Solidity Compilation failed" --passivepopup "$filename @ $(pwd)" 10;
+  fi
+
+  echo -e "\nCompiling $filename end";
+}
 
 inotifywait -e close_write,moved_to,create -m "$CONTRACTS_DIR/" |
   while read -r directory events filename; do
@@ -18,32 +32,35 @@ inotifywait -e close_write,moved_to,create -m "$CONTRACTS_DIR/" |
       HASH_FILE="$LOCK_DIR/$LOCK_FILE$(basename $filename)";
       LAST_COMPILED_HASH="";
 
-      if [ -f $HASH_FILE ]; then
-        LAST_COMPILED_HASH=$(cat $HASH_FILE);
+      if [ -f "$HASH_FILE" ]; then
+        LAST_COMPILED_HASH=$(cat "$HASH_FILE");
       fi;
 
       condensed_file=$(tr -d ' \t\n\r\f' <"$CONTRACTS_DIR/$filename");
       # echo $condensed_file > "$HASH_FILE$(date +_%M_%S).timed_version";
 
-      NEW_COMPILED_HASH=$(echo $condensed_file | md5sum | cut -d' ' -f1);
+      NEW_COMPILED_HASH=$(echo "$condensed_file" | md5sum | cut -d' ' -f1);
 
       if [ "$LAST_COMPILED_HASH" != "$NEW_COMPILED_HASH" ]; then
         clear;
         echo -e "\nCompiling $filename";
-        truffle compile && truffle-flattener "$CONTRACTS_DIR/$filename" > out/Flat.sol
-        # out=$(truffle compile);
+        truffle compile | tee "$LOCK_DIR/compile_out_$filename"
 
-        # if [ $? -ne 0 ]; then
-        #   echo $out;
-        # fi;
+        compile_status=${PIPESTATUS[0]}
+        if [ "$compile_status" -ne 0 ]; then
+          output_file="$LOCK_DIR/out_FLAT_$filename"
+          # truffle-flattener "$CONTRACTS_DIR/$filename" > "$output_file" &
+
+          if [ "$DE_NOTIFY" -eq 0 ]; then
+            # kdialog --textbox "$output_file"
+            # kdialog --title "Solidity Compilation failed" --passivepopup 20
+            kdialog --title "Solidity Compilation failed" --passivepopup "$output_file" 20;
+          fi;
+        fi
 
         echo -e "\nCompiling $filename end";
-
-        echo "LAST HASH: '$LAST_COMPILED_HASH'"
-        echo "NEW  HASH: '$NEW_COMPILED_HASH'"
-        # rm -rfv /tmp/test-11901*
       fi;
-      echo $NEW_COMPILED_HASH > $HASH_FILE;
+      echo "$NEW_COMPILED_HASH" > "$HASH_FILE;"
 
     fi;
     echo -n "."
