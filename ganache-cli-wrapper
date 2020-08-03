@@ -7,6 +7,8 @@ trap ctrl_c INT
 port=""
 host=""
 keepAlive="--keepAliveTimeout 1000000"
+# mnemonic="--mnemonic \"$(cat .secret)\""
+
 function ctrl_c() {
   echo -e "\nKiling all_logger pid  $logger_pid and $transaction_logger_pid"
   sleep 2
@@ -35,7 +37,7 @@ transaction_logger_pid=$!
 
 #TODO: echo the expanded command before executing
 
-ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json $host $port $keepAlive > .ganache.out 2>&1 &
+ganache-cli -d -e $initial_ether_balance --acctKeys .ganache.out.wallets.json $mnemonic $host $port $keepAlive > .ganache.out 2>&1 &
 ganache_exitstatus=$?
 if [ $ganache_exitstatus -ne 0 ]; then
   echo "ganache died $ganache_exitstatus"
